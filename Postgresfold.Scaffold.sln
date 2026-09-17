@@ -1,0 +1,52 @@
+
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.12.35707.178
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "App", "App", "{9D3C7C2E-6C6E-4A21-9D9A-5E9C7B7E1A11}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Domain", "Domain", "{2A7B5E9F-9B2C-4E63-8E3F-2C6C9E7B1A22}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Model", "Model", "{6F1D2C4E-3A8B-4F52-9C6D-1A2B3C4D5E33}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Postgresfold.Scaffold.Model", "Model\Postgresfold.Scaffold.Model\Postgresfold.Scaffold.Model.csproj", "{1B2C3D4E-5F6A-4B7C-8D9E-0F1A2B3C4D44}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Postgresfold.Scaffold.Domain", "Domain\Postgresfold.Scaffold.Domain\Postgresfold.Scaffold.Domain.csproj", "{2C3D4E5F-6A7B-4C8D-9E0F-1A2B3C4D5E55}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Postgresfold.Scaffold.App", "App\Postgresfold.Scaffold.App\Postgresfold.Scaffold.App.csproj", "{3D4E5F6A-7B8C-4D9E-0F1A-2B3C4D5E6F66}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		DebugForceScaffold|Any CPU = DebugForceScaffold|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{1B2C3D4E-5F6A-4B7C-8D9E-0F1A2B3C4D44}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1B2C3D4E-5F6A-4B7C-8D9E-0F1A2B3C4D44}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1B2C3D4E-5F6A-4B7C-8D9E-0F1A2B3C4D44}.DebugForceScaffold|Any CPU.ActiveCfg = DebugForceScaffold|Any CPU
+		{1B2C3D4E-5F6A-4B7C-8D9E-0F1A2B3C4D44}.DebugForceScaffold|Any CPU.Build.0 = DebugForceScaffold|Any CPU
+		{1B2C3D4E-5F6A-4B7C-8D9E-0F1A2B3C4D44}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1B2C3D4E-5F6A-4B7C-8D9E-0F1A2B3C4D44}.Release|Any CPU.Build.0 = Release|Any CPU
+		{2C3D4E5F-6A7B-4C8D-9E0F-1A2B3C4D5E55}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2C3D4E5F-6A7B-4C8D-9E0F-1A2B3C4D5E55}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2C3D4E5F-6A7B-4C8D-9E0F-1A2B3C4D5E55}.DebugForceScaffold|Any CPU.ActiveCfg = DebugForceScaffold|Any CPU
+		{2C3D4E5F-6A7B-4C8D-9E0F-1A2B3C4D5E55}.DebugForceScaffold|Any CPU.Build.0 = DebugForceScaffold|Any CPU
+		{2C3D4E5F-6A7B-4C8D-9E0F-1A2B3C4D5E55}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2C3D4E5F-6A7B-4C8D-9E0F-1A2B3C4D5E55}.Release|Any CPU.Build.0 = Release|Any CPU
+		{3D4E5F6A-7B8C-4D9E-0F1A-2B3C4D5E6F66}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3D4E5F6A-7B8C-4D9E-0F1A-2B3C4D5E6F66}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3D4E5F6A-7B8C-4D9E-0F1A-2B3C4D5E6F66}.DebugForceScaffold|Any CPU.ActiveCfg = DebugForceScaffold|Any CPU
+		{3D4E5F6A-7B8C-4D9E-0F1A-2B3C4D5E6F66}.DebugForceScaffold|Any CPU.Build.0 = DebugForceScaffold|Any CPU
+		{3D4E5F6A-7B8C-4D9E-0F1A-2B3C4D5E6F66}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3D4E5F6A-7B8C-4D9E-0F1A-2B3C4D5E6F66}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{1B2C3D4E-5F6A-4B7C-8D9E-0F1A2B3C4D44} = {6F1D2C4E-3A8B-4F52-9C6D-1A2B3C4D5E33}
+		{2C3D4E5F-6A7B-4C8D-9E0F-1A2B3C4D5E55} = {2A7B5E9F-9B2C-4E63-8E3F-2C6C9E7B1A22}
+		{3D4E5F6A-7B8C-4D9E-0F1A-2B3C4D5E6F66} = {9D3C7C2E-6C6E-4A21-9D9A-5E9C7B7E1A11}
+	EndGlobalSection
+EndGlobal
