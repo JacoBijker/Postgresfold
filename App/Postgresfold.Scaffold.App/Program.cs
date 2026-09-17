@@ -23,6 +23,7 @@ class Program
                 { "-namespace", "namespace" },
                 { "-connectionstring", "connectionstring" },
                 { "-regen", "regen" },
+                { "-delete", "delete" },
                 { "-help", "help" },
                 })
                 .Build();
@@ -34,7 +35,16 @@ class Program
                 Console.WriteLine("-dbupproject <path>      : Overrides the DbUp project path instead of letting the application search for it. Used for namespace discovery only.");
                 Console.WriteLine("-namespace <name>        : Overrides the namespace for scaffolded code instead of deriving it from the DbUp project.");
                 Console.WriteLine("-regen <params>          : Scopes regeneration. Leave empty to regenerate every table in every schema. Can specify a schema 'public', a table 'public.Customer', or an existing generated proc 'public.zgen_Customer_GetById' (its owning table is regenerated). Can send multiple entities with ;");
+                Console.WriteLine("-delete <params>         : Deletes previously generated code and functions. Never touches the actual table/data. Leave empty to delete everything found, or specify a schema 'public', a table 'public.Customer' (table model + all its procs; the table need not still exist), or a single proc 'public.zgen_Customer_GetById'. Can send multiple entities with ;");
 
+                return;
+            }
+
+            var regenerate = args.Contains("-regen");
+            var delete = args.Contains("-delete");
+            if (regenerate && delete)
+            {
+                Console.WriteLine("Only specify one of: -regen, -delete");
                 return;
             }
 
@@ -84,7 +94,10 @@ class Program
                     services.AddTransient<SqlDalRepositoryServiceCollectionExtensionScaffold>();
                     services.AddTransient<SqlDomainServiceServiceCollectionExtensionScaffold>();
 
-                    services.AddHostedService<PostgresScaffoldWorker>();
+                    if (delete)
+                        services.AddHostedService<PostgresDeleteWorker>();
+                    else
+                        services.AddHostedService<PostgresScaffoldWorker>();
                 })
                 .Build();
 

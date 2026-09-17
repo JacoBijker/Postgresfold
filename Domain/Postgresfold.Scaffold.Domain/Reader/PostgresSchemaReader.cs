@@ -9,7 +9,8 @@ namespace Postgresfold.Scaffold.Domain.Reader
     /// Reads table shape (columns, primary/foreign keys, single-column indexes) directly from a live
     /// Postgres connection via information_schema/pg_catalog, replacing the old .sql-file text parsers.
     /// Stored procedures have no independent authored source in this tool - they are always rebuilt
-    /// from the current table shape, so there is no equivalent "read an existing proc" reader.
+    /// from the current table shape (or, for deletion, simply discovered by name in pg_proc), so there
+    /// is no reader that reconstructs a proc's full parameter list from the catalog.
     /// </summary>
     public class PostgresSchemaReader
     {
@@ -25,6 +26,27 @@ namespace Postgresfold.Scaffold.Domain.Reader
 
             var rows = await connection.QueryAsync<(string table_schema, string table_name)>(sql, new { schema = schemaFilter });
             return rows.Select(r => (r.table_schema, r.table_name)).ToList();
+        }
+
+        /// <summary>
+        /// Finds existing generated ("zgen_") functions by name in pg_proc. Pass <paramref name="tableName"/>
+        /// to scope to one table's procs, or leave it null for every generated proc in the schema - this
+        /// works even when the owning table has since been dropped, which is what makes it possible to
+        /// clean up orphaned generated code/functions for a table that no longer exists.
+        /// </summary>
+        public async Task<List<string>> GetGeneratedProcedureNames(NpgsqlConnection connection, string schema, string? tableName = null)
+        {
+            var pattern = tableName is null ? "zgen\\_%" : $"zgen\\_{tableName}\\_%";
+
+            var sql = @"
+                SELECT p.proname
+                FROM pg_proc p
+                JOIN pg_namespace n ON n.oid = p.pronamespace
+                WHERE n.nspname = @schema AND p.proname LIKE @pattern ESCAPE '\'
+                ORDER BY p.proname;";
+
+            var rows = await connection.QueryAsync<string>(sql, new { schema, pattern });
+            return rows.ToList();
         }
 
         public async Task<SqlTable> GetTable(NpgsqlConnection connection, string schema, string tableName)
