@@ -112,6 +112,13 @@ namespace Postgresfold.Scaffold.Domain.Scaffold
                         FileUtils.WriteTextAndDirectory(baseRepositoryPath, GetBaseRepositoryFile());
                         Logger.LogSuccess($"[Created Base Repository] {baseRepositoryPath}");
                     }
+
+                    var dapperColumnMapperPath = Path.Combine(dalBasePath, "DapperColumnMapper.cs");
+                    if (!File.Exists(dapperColumnMapperPath))
+                    {
+                        FileUtils.WriteTextAndDirectory(dapperColumnMapperPath, GetDapperColumnMapperFile());
+                        Logger.LogSuccess($"[Created Dapper Column Mapper] {dapperColumnMapperPath}");
+                    }
                 }
             }
             catch (Exception ex)
@@ -238,7 +245,8 @@ namespace Postgresfold.Scaffold.Domain.Scaffold
                                             SyntaxFactory.ArgumentList(
                                                 SyntaxFactory.SingletonSeparatedList(
                                                     SyntaxFactory.Argument(SyntaxFactory.IdentifierName("connectionString"))))))
-                                        .WithBody(SyntaxFactory.Block())));
+                                        .WithBody(SyntaxFactory.Block(
+                                            SyntaxFactory.ParseStatement($"DapperColumnMapper.Register<{GetModelNamespace(sqlStoredProcedure)}.{sqlStoredProcedure.TableName.ToPascalCase()}>();")))));
         }
 
 
@@ -256,17 +264,20 @@ namespace Postgresfold.Scaffold.Domain.Scaffold
 
                 foreach (var param in sqlStoredProcedure.Parameters)
                 {
-                    if (!string.IsNullOrEmpty(param.DefaultValue))
-                        sb.Append($"{param.ToCSharpTypeString(true, GetModelNamespace(sqlStoredProcedure))} {param.ColumnName.ToCamelCase()} = \"{param.DefaultValue}\",");
-                    else
+                    // Array-typed params (e.g. the GetByIds "Ids" list) are required; every other
+                    // param is an optional filter, so it defaults to null - never to the underlying
+                    // column's own DB-level default (e.g. gen_random_uuid()), which is meaningless here.
+                    if (param.DataType.EndsWith("[]"))
                         sb.Append($"{param.ToCSharpTypeString(true, GetModelNamespace(sqlStoredProcedure))} {param.ColumnName.ToCamelCase()},");
+                    else
+                        sb.Append($"{param.ToCSharpTypeString(true, GetModelNamespace(sqlStoredProcedure))} {param.ColumnName.ToCamelCase()} = null,");
                 }
 
                 sb.Remove(sb.Length - 1, 1);
                 sb.AppendLine(")");
             }
             else
-                sb.Append($"public async Task<{GetModelNamespace(sqlStoredProcedure)}.{returnTypeName}> {methodName}({GetModelNamespace(sqlStoredProcedure)}.{sqlStoredProcedure.TableName} {sqlStoredProcedure.TableName.ToCSharpSafeKeyword()})");
+                sb.Append($"public async Task<{GetModelNamespace(sqlStoredProcedure)}.{returnTypeName}> {methodName}({GetModelNamespace(sqlStoredProcedure)}.{sqlStoredProcedure.TableName.ToPascalCase()} {sqlStoredProcedure.TableName.ToCSharpSafeKeyword()})");
 
             sb.AppendLine("{");
 
@@ -329,6 +340,49 @@ namespace Postgresfold.Scaffold.Domain.Scaffold
         {
             var ns = _config.Namespaces.DalNamespace.ToSchemaString("public");
             return "using Npgsql;\r\n\r\nnamespace " + ns + "\r\n{\r\n\tpublic partial class BaseRepository\r\n\t{\r\n\t\tprivate string _connectionString;\r\n\t\tpublic BaseRepository(string connectionString)\r\n\t\t{\r\n\t\t\t_connectionString = connectionString;\r\n\t\t}\r\n\t\tprotected NpgsqlConnection GetConnection()\r\n\t\t{\r\n\t\t\treturn new NpgsqlConnection(_connectionString);\r\n\t\t}\r\n\t}\r\n}\r\n";
+        }
+
+        /// <summary>
+        /// Every generated model property carries a [Column("raw_db_name")] attribute (see
+        /// SqlModelScaffold). This registers a Dapper CustomPropertyTypeMap per model type, read
+        /// from those attributes, so query results (snake_case columns) materialize onto the
+        /// PascalCase C# properties without a blanket process-wide Dapper setting. Each repository's
+        /// constructor calls Register&lt;T&gt;() for its own model type; the HashSet makes repeat
+        /// calls (one per repository instance) cheap no-ops after the first.
+        /// </summary>
+        private string GetDapperColumnMapperFile()
+        {
+            var ns = _config.Namespaces.DalNamespace.ToSchemaString("public");
+            return $$"""
+using System;
+using System.ComponentModel.DataAnnotations.Schema;
+using System.Collections.Generic;
+using System.Linq;
+using System.Reflection;
+using Dapper;
+
+namespace {{ns}}
+{
+    public static class DapperColumnMapper
+    {
+        private static readonly HashSet<Type> _registered = new();
+        private static readonly object _lock = new();
+
+        public static void Register<T>()
+        {
+            lock (_lock)
+            {
+                if (!_registered.Add(typeof(T)))
+                    return;
+
+                SqlMapper.SetTypeMap(typeof(T), new CustomPropertyTypeMap(typeof(T), (type, columnName) =>
+                    type.GetProperties().FirstOrDefault(p =>
+                        string.Equals(p.GetCustomAttribute<ColumnAttribute>()?.Name ?? p.Name, columnName, StringComparison.OrdinalIgnoreCase))));
+            }
+        }
+    }
+}
+""";
         }
     }
 }

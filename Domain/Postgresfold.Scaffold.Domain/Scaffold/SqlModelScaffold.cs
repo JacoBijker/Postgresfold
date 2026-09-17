@@ -97,7 +97,7 @@ namespace Postgresfold.Scaffold.Domain.Scaffold
                 throw new Exception($"No primary constraint found in table {sqlTable.TableName}");
 
             // Create a class declaration
-            var classDeclaration = SyntaxFactory.ClassDeclaration(sqlTable.TableName)
+            var classDeclaration = SyntaxFactory.ClassDeclaration(GetClassName(sqlTable))
                 .AddModifiers(SyntaxFactory.Token(SyntaxKind.PublicKeyword),
                     SyntaxFactory.Token(SyntaxKind.PartialKeyword));
 
@@ -117,10 +117,16 @@ namespace Postgresfold.Scaffold.Domain.Scaffold
                 var typeName = column.ToCSharpTypeString(false);
                  if (!typeName.EndsWith("?") && typeName == "string")
                      typeName += "?";
-                
+
                 var property = SyntaxFactory.PropertyDeclaration(
-                        SyntaxFactory.ParseTypeName(typeName), column.ColumnName)
+                        SyntaxFactory.ParseTypeName(typeName), column.ColumnName.ToPascalCase())
                     .AddModifiers(SyntaxFactory.Token(SyntaxKind.PublicKeyword))
+                    .AddAttributeLists(SyntaxFactory.AttributeList(
+                        SyntaxFactory.SingletonSeparatedList(
+                            SyntaxFactory.Attribute(SyntaxFactory.IdentifierName("Column"))
+                                .AddArgumentListArguments(SyntaxFactory.AttributeArgument(
+                                    SyntaxFactory.LiteralExpression(SyntaxKind.StringLiteralExpression,
+                                        SyntaxFactory.Literal(column.ColumnName)))))))
                     .AddAccessorListAccessors(
                         SyntaxFactory.AccessorDeclaration(SyntaxKind.GetAccessorDeclaration)
                             .WithSemicolonToken(SyntaxFactory.Token(SyntaxKind.SemicolonToken)),
@@ -157,10 +163,10 @@ namespace Postgresfold.Scaffold.Domain.Scaffold
                          c.ConstraintType == Model.Enum.ConstraintType.ForeignKey))
             {
                 //Remove Id from the name to ensure when multiple FK's reference the same column we dont generate duplicates
-                var nonIdName = constraint.Column.Substring(0, constraint.Column.Length - 2);
+                var nonIdName = constraint.Column.GetNonIdName();
 
                 var fkProperty = SyntaxFactory
-                    .PropertyDeclaration(SyntaxFactory.ParseTypeName(constraint.RefTable + "?"), nonIdName)
+                    .PropertyDeclaration(SyntaxFactory.ParseTypeName(constraint.RefTable.ToPascalCase() + "?"), nonIdName)
                     .AddModifiers(SyntaxFactory.Token(SyntaxKind.PublicKeyword))
                     .AddAccessorListAccessors(
                         SyntaxFactory.AccessorDeclaration(SyntaxKind.GetAccessorDeclaration)
@@ -179,7 +185,9 @@ namespace Postgresfold.Scaffold.Domain.Scaffold
 
             // Create the syntax tree
             var compilationUnit = SyntaxFactory.CompilationUnit()
-                .AddUsings(SyntaxFactory.UsingDirective(SyntaxFactory.ParseName("System")))
+                .AddUsings(
+                    SyntaxFactory.UsingDirective(SyntaxFactory.ParseName("System")),
+                    SyntaxFactory.UsingDirective(SyntaxFactory.ParseName("System.ComponentModel.DataAnnotations.Schema")))
                 .AddMembers(namespaceDeclaration);
 
             // Normalize and return the code as a string

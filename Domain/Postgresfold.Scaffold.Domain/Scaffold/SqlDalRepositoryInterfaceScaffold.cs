@@ -223,18 +223,17 @@ namespace Postgresfold.Scaffold.Domain.Scaffold
                     sb.Append($"Task {methodName}(");
 
                 foreach (var param in sqlStoredProcedure.Parameters)
-                    if (!param.ColumnName.Equals("RetMsg", StringComparison.OrdinalIgnoreCase))
-                        if (!string.IsNullOrEmpty(param.DefaultValue))
-                            sb.Append($"{param.ToCSharpTypeString(returnsData, GetModelNamespace(sqlStoredProcedure))} {param.ColumnName.ToCamelCase()} = \"{param.DefaultValue}\",");
-                        else
-                            sb.Append($"{param.ToCSharpTypeString(returnsData, GetModelNamespace(sqlStoredProcedure))} {param.ColumnName.ToCamelCase()},");
+                    if (param.DataType.EndsWith("[]"))
+                        sb.Append($"{param.ToCSharpTypeString(returnsData, GetModelNamespace(sqlStoredProcedure))} {param.ColumnName.ToCamelCase()},");
+                    else
+                        sb.Append($"{param.ToCSharpTypeString(returnsData, GetModelNamespace(sqlStoredProcedure))} {param.ColumnName.ToCamelCase()} = null,");
 
                 sb.Remove(sb.Length - 1, 1);
                 sb.AppendLine(");");
                 return sb.ToString();
             }
             else
-                return $"Task<{GetModelNamespace(sqlStoredProcedure)}.{returnTypeName}> {methodName}({GetModelNamespace(sqlStoredProcedure)}.{sqlStoredProcedure.TableName} {sqlStoredProcedure.TableName.ToCSharpSafeKeyword()});";
+                return $"Task<{GetModelNamespace(sqlStoredProcedure)}.{returnTypeName}> {methodName}({GetModelNamespace(sqlStoredProcedure)}.{sqlStoredProcedure.TableName.ToPascalCase()} {sqlStoredProcedure.TableName.ToCSharpSafeKeyword()});";
         }
 
         private string GetInterfaceName(SqlStoredProcedure sqlStoredProcedure)

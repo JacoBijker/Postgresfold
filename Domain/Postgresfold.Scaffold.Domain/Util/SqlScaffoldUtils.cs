@@ -44,10 +44,21 @@ namespace Postgresfold.Scaffold.Domain.Util
             return tableName.ToCamelCase();
         }
 
+        /// <summary>
+        /// PascalCases a foreign-key column name and strips a trailing "Id" (e.g. "user_id" ->
+        /// "User"), for the FK's navigation-property name. Shared by SqlModelScaffold and
+        /// SqlForeignDomainServiceScaffold so both always compute the exact same name.
+        /// </summary>
+        public static string GetNonIdName(this string rawColumnName)
+        {
+            var pascal = rawColumnName.ToPascalCase();
+            return pascal.EndsWith("Id", StringComparison.Ordinal) ? pascal[..^2] : pascal;
+        }
+
         public static string GetReturnTypeName(this SqlStoredProcedure sqlStoredProcedure)
         {
             return string.IsNullOrWhiteSpace(sqlStoredProcedure.CustomReturnType)
-                ? sqlStoredProcedure.TableName
+                ? sqlStoredProcedure.TableName.ToPascalCase()
                 : sqlStoredProcedure.CustomReturnType;
         }
 

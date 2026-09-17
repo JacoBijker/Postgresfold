@@ -88,7 +88,7 @@ namespace Postgresfold.Scaffold.Domain.Scaffold
                 }
 
                 var registrationStatement = SyntaxFactory.ParseStatement(
-                    $"services.AddTransient<I{sqlStoredProcedure.TableName}Repository, {sqlStoredProcedure.TableName}Repository>(x => new {sqlStoredProcedure.TableName}Repository(connectionString));"
+                    $"services.AddTransient<I{sqlStoredProcedure.TableName.ToPascalCase()}Repository, {sqlStoredProcedure.TableName.ToPascalCase()}Repository>(x => new {sqlStoredProcedure.TableName.ToPascalCase()}Repository(connectionString));"
                 );
                 var updatedFileContent = UpdateMethodStatements(syntaxNode, sqlStoredProcedure, registrationStatement);
                 if (!existingFileContent.Equals(updatedFileContent))
@@ -156,7 +156,7 @@ namespace Postgresfold.Scaffold.Domain.Scaffold
                                                       memberAccess.Name.Identifier.Text == "AddTransient")
                                                   {
                                                       return invocation.ArgumentList.Arguments.Any() &&
-                                                             invocation.ArgumentList.Arguments[0].ToString().Equals($"x => new {sqlStoredProcedure.TableName}Repository(connectionString)");
+                                                             invocation.ArgumentList.Arguments[0].ToString().Equals($"x => new {sqlStoredProcedure.TableName.ToPascalCase()}Repository(connectionString)");
                                                   }
                                                   return false;
                                               });
@@ -196,7 +196,7 @@ namespace Postgresfold.Scaffold.Domain.Scaffold
                                             if (memberAccess.Name.Identifier.Text == "AddTransient")
                                             {
                                                 return (invocation.ArgumentList.Arguments.Any() &&
-                                                        invocation.ArgumentList.Arguments[0].ToString().Equals($"x => new {sqlStoredProcedure.TableName}Repository(connectionString)"));
+                                                        invocation.ArgumentList.Arguments[0].ToString().Equals($"x => new {sqlStoredProcedure.TableName.ToPascalCase()}Repository(connectionString)"));
                                             }
 
                                     return false;

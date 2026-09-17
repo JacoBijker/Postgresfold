@@ -14,6 +14,12 @@ namespace Postgresfold.Scaffold.Domain.Reader
     /// </summary>
     public class PostgresSchemaReader
     {
+        /// <summary>
+        /// DbUp's own bookkeeping table(s) - never a real application table, so never scaffolded.
+        /// Matches the same "dbup"/"schemaversions" convention the original MSSQL tool skipped.
+        /// </summary>
+        private static readonly string[] _excludedTableNames = { "dbup", "schemaversions" };
+
         public async Task<List<(string Schema, string TableName)>> GetAllTables(NpgsqlConnection connection, string? schemaFilter = null)
         {
             var sql = @"
@@ -21,10 +27,11 @@ namespace Postgresfold.Scaffold.Domain.Reader
                 FROM information_schema.tables
                 WHERE table_type = 'BASE TABLE'
                   AND table_schema NOT IN ('pg_catalog', 'information_schema')
+                  AND lower(table_name) <> ALL(@excludedTableNames)
                   AND (@schema IS NULL OR table_schema = @schema)
                 ORDER BY table_schema, table_name;";
 
-            var rows = await connection.QueryAsync<(string table_schema, string table_name)>(sql, new { schema = schemaFilter });
+            var rows = await connection.QueryAsync<(string table_schema, string table_name)>(sql, new { schema = schemaFilter, excludedTableNames = _excludedTableNames });
             return rows.Select(r => (r.table_schema, r.table_name)).ToList();
         }
 

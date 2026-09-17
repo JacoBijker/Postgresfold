@@ -1,3 +1,4 @@
+using Postgresfold.Scaffold.Domain.Util;
 using Postgresfold.Scaffold.Model.Sql;
 using System.Text;
 
@@ -149,7 +150,10 @@ namespace Postgresfold.Scaffold.Domain.Scaffold
         public (SqlStoredProcedure Procedure, string Sql) BuildGetByPrimaryKeyIdsProcedure(SqlTable table)
         {
             var primaryKeyColumn = GetPrimaryColumn(table);
-            var procName = $"zgen_{table.TableName}_GetBy{primaryKeyColumn.ColumnName}s";
+            // The embedded column name must be PascalCase here: GetMethodName() strips "zgen_{Table}_"
+            // off this exact proc name and reuses the rest verbatim as the C# method name, and
+            // SqlForeignDomainServiceScaffold assumes the result is "Get{RefTable}ByIds".
+            var procName = $"zgen_{table.TableName}_GetBy{primaryKeyColumn.ColumnName.ToPascalCase()}s";
             var pIds = "p_ids";
 
             var sb = new StringBuilder();
@@ -182,6 +186,9 @@ namespace Postgresfold.Scaffold.Domain.Scaffold
             sb.AppendLine($") RETURNS SETOF {QualifiedName(table.Schema, table.TableName)}");
             sb.AppendLine("LANGUAGE plpgsql AS $BODY$");
             sb.AppendLine("BEGIN");
+            // The C# caller always passes every parameter explicitly (even as null), so the
+            // parameter's own SQL DEFAULT above is never actually reached - apply it here instead.
+            sb.AppendLine($"  {pSort} := COALESCE({pSort}, 'ASC');");
             sb.AppendLine($"  RETURN QUERY SELECT * FROM {QualifiedName(table.Schema, table.TableName)}");
             var whereClauses = foreignColumns.Select(c => $"({ToParamName(c.ColumnName)} IS NULL OR {Quote(c.ColumnName)} = {ToParamName(c.ColumnName)})").ToList();
             if (hasIsActive)
@@ -231,6 +238,11 @@ namespace Postgresfold.Scaffold.Domain.Scaffold
             sb.AppendLine($") RETURNS TABLE({string.Join(", ", returnColumns)})");
             sb.AppendLine("LANGUAGE plpgsql AS $BODY$");
             sb.AppendLine("BEGIN");
+            // The C# caller always passes every parameter explicitly (even as null), so these
+            // parameters' own SQL DEFAULTs above are never actually reached - apply them here instead.
+            sb.AppendLine("  p_pagenumber := COALESCE(p_pagenumber, 1);");
+            sb.AppendLine("  p_pagesize := COALESCE(p_pagesize, 50);");
+            sb.AppendLine($"  {pSort} := COALESCE({pSort}, 'ASC');");
             sb.AppendLine("  RETURN QUERY SELECT " + string.Join(", ", table.Columns.Select(c => $"t.{Quote(c.ColumnName)}")) + ", count(*) OVER()::int");
             sb.AppendLine($"  FROM {QualifiedName(table.Schema, table.TableName)} t");
             var whereClauses = foreignColumns.Select(c => $"({ToParamName(c.ColumnName)} IS NULL OR t.{Quote(c.ColumnName)} = {ToParamName(c.ColumnName)})").ToList();
@@ -262,7 +274,7 @@ namespace Postgresfold.Scaffold.Domain.Scaffold
         public (SqlStoredProcedure Procedure, string Sql) BuildGetByIndexedColumnProcedure(SqlTable table, SqlIndex index)
         {
             var column = table.Columns.First(s => s.ColumnName == index.Column);
-            var procName = $"zgen_{table.TableName}_GetBy{index.Column}";
+            var procName = $"zgen_{table.TableName}_GetBy{index.Column.ToPascalCase()}";
             var pCol = ToParamName(column.ColumnName);
 
             var sb = new StringBuilder();

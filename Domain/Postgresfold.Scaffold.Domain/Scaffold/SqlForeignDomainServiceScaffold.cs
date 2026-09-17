@@ -198,12 +198,12 @@ namespace Postgresfold.Scaffold.Domain.Scaffold
             //In case where multiple references are made to the same table, we need to ensure we only create them once.
             var distinctTableRefs = foreignKeyConstraints.Select(s => s.RefTable).Distinct();
             var fields = distinctTableRefs.Select(refTable =>
-                RoslynUtils.CreateField($"_{refTable.ToCamelCase()}Repo", $"I{refTable}Repository", SyntaxKind.PrivateKeyword, SyntaxKind.ReadOnlyKeyword));
+                RoslynUtils.CreateField($"_{refTable.ToCamelCase()}Repo", $"I{refTable.ToPascalCase()}Repository", SyntaxKind.PrivateKeyword, SyntaxKind.ReadOnlyKeyword));
 
             var parameters = distinctTableRefs.Select(refTable =>
-                RoslynUtils.CreateParameter($"{refTable.ToCamelCase()}Repo", $"I{refTable}Repository")).ToList();
+                RoslynUtils.CreateParameter($"{refTable.ToCamelCase()}Repo", $"I{refTable.ToPascalCase()}Repository")).ToList();
 
-            parameters.Insert(0, RoslynUtils.CreateParameter($"repo", $"I{sqlTable.TableName}Repository"));
+            parameters.Insert(0, RoslynUtils.CreateParameter($"repo", $"I{sqlTable.TableName.ToPascalCase()}Repository"));
 
             var assignments = distinctTableRefs.Select(refTable =>
                 RoslynUtils.CreateAssignmentExpression($"_{refTable.ToCamelCase()}Repo", $"{refTable.ToCamelCase()}Repo")).ToList();
@@ -253,16 +253,17 @@ namespace Postgresfold.Scaffold.Domain.Scaffold
         private MethodDeclarationSyntax GenerateAppendMethod(SqlTable sqlTable, SqlConstraint constraint)
         {
             var tableName = sqlTable.TableName;
-            var refTable = constraint.RefTable;
-            var columnName = constraint.Column;
+            var refTable = constraint.RefTable.ToPascalCase();
+            var columnName = constraint.Column.ToPascalCase();
+            var refColumnName = constraint.RefColumn.ToPascalCase();
             var modelNs = GetModelNamespace(sqlTable.Schema);
             var column = sqlTable.Columns.FirstOrDefault(s => s.ColumnName == constraint.Column);
             var safeTableName = tableName.ToCSharpSafeKeyword();
 
             // Use StringBuilder to construct the method as a string
             var methodBuilder = new StringBuilder();
-            var nonIdName = constraint.Column.Substring(0, constraint.Column.Length - 2);
-            methodBuilder.AppendLine($"protected async Task Append{nonIdName}(List<{modelNs}.{tableName}> {tableName.ToCamelCase()}s)");
+            var nonIdName = constraint.Column.GetNonIdName();
+            methodBuilder.AppendLine($"protected async Task Append{nonIdName}(List<{modelNs}.{tableName.ToPascalCase()}> {tableName.ToCamelCase()}s)");
             methodBuilder.AppendLine("{");
 
             var hasDefaultValue = !string.IsNullOrWhiteSpace(column.DefaultValue);
@@ -271,11 +272,13 @@ namespace Postgresfold.Scaffold.Domain.Scaffold
             else
                 methodBuilder.AppendLine($"    var distinct{columnName}s = {tableName.ToCamelCase()}s.Select(s => s.{columnName}).Distinct().ToList();");
 
-            methodBuilder.AppendLine($"    var distinct{refTable}s = await _{refTable.ToCamelCase()}Repo.Get{refTable}By{refTable}Ids(distinct{columnName}s);");
+            // Assumes the referenced table's primary key follows the same generic "Id" convention as
+            // every table this tool scaffolds (see BuildGetByPrimaryKeyIdsProcedure) - GetBy{Pk}s becomes GetByIds.
+            methodBuilder.AppendLine($"    var distinct{refTable}s = await _{refTable.ToCamelCase()}Repo.Get{refTable}ByIds(distinct{columnName}s);");
             methodBuilder.AppendLine();
             methodBuilder.AppendLine($"    foreach (var {safeTableName} in {tableName.ToCamelCase()}s)");
             methodBuilder.AppendLine("    {");
-            methodBuilder.AppendLine($"        {safeTableName}.{nonIdName} = distinct{refTable}s.FirstOrDefault(s => s.{constraint.RefColumn} == {safeTableName}.{columnName});");
+            methodBuilder.AppendLine($"        {safeTableName}.{nonIdName} = distinct{refTable}s.FirstOrDefault(s => s.{refColumnName} == {safeTableName}.{columnName});");
             methodBuilder.AppendLine("    }");
             methodBuilder.AppendLine("}");
 
@@ -297,11 +300,10 @@ namespace Postgresfold.Scaffold.Domain.Scaffold
                 sb.Append($"public async Task<List<{GetModelNamespace(sqlStoredProcedure.Schema)}.{returnTypeName}>> {GetMethodNameWithFK(sqlStoredProcedure)}(");
 
                 foreach (var param in sqlStoredProcedure.Parameters)
-                    if (!param.ColumnName.Equals("RetMsg", StringComparison.OrdinalIgnoreCase))
-                        if (!string.IsNullOrEmpty(param.DefaultValue))
-                            sb.Append($"{param.ToCSharpTypeString(true, GetModelNamespace(sqlStoredProcedure.Schema))} {param.ColumnName.ToCamelCase()} = \"{param.DefaultValue}\",");
-                        else
-                            sb.Append($"{param.ToCSharpTypeString(true, GetModelNamespace(sqlStoredProcedure.Schema))} {param.ColumnName.ToCamelCase()},");
+                    if (param.DataType.EndsWith("[]"))
+                        sb.Append($"{param.ToCSharpTypeString(true, GetModelNamespace(sqlStoredProcedure.Schema))} {param.ColumnName.ToCamelCase()},");
+                    else
+                        sb.Append($"{param.ToCSharpTypeString(true, GetModelNamespace(sqlStoredProcedure.Schema))} {param.ColumnName.ToCamelCase()} = null,");
 
                 sb.Remove(sb.Length - 1, 1);
                 sb.AppendLine(")");
@@ -318,7 +320,7 @@ namespace Postgresfold.Scaffold.Domain.Scaffold
                 foreach (var constraint in sqlTable.Constraints.Where(s => s.ConstraintType == ConstraintType.ForeignKey))
                 {
                     //Remove Id from the name to ensure when multiple FK's reference the same column we dont generate duplicates
-                    var nonIdName = constraint.Column.Substring(0, constraint.Column.Length - 2);
+                    var nonIdName = constraint.Column.GetNonIdName();
                     sb.AppendLine($"    await Append{nonIdName}(ret{returnTypeName});");
                 }
 
@@ -329,7 +331,7 @@ namespace Postgresfold.Scaffold.Domain.Scaffold
             }
             else
             {
-                sb.AppendLine($"public async Task<{GetModelNamespace(sqlStoredProcedure.Schema)}.{returnTypeName}> {methodName}({GetModelNamespace(sqlStoredProcedure.Schema)}.{sqlStoredProcedure.TableName} {sqlStoredProcedure.TableName.ToCamelCase()})");
+                sb.AppendLine($"public async Task<{GetModelNamespace(sqlStoredProcedure.Schema)}.{returnTypeName}> {methodName}({GetModelNamespace(sqlStoredProcedure.Schema)}.{sqlStoredProcedure.TableName.ToPascalCase()} {sqlStoredProcedure.TableName.ToCamelCase()})");
                 sb.AppendLine("{");
                 sb.AppendLine($"    return await _repo.{GetMethodNameWithFK(sqlStoredProcedure)}({sqlStoredProcedure.TableName.ToCamelCase()});");
                 sb.AppendLine("}");

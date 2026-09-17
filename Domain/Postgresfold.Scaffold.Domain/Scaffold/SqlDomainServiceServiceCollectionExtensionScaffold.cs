@@ -87,7 +87,7 @@ namespace Postgresfold.Scaffold.Domain.Scaffold
                 }
 
                 var registrationStatement = SyntaxFactory.ParseStatement(
-                    $"services.AddTransient<I{sqlStoredProcedure.TableName}Service, {sqlStoredProcedure.TableName}Service>();"
+                    $"services.AddTransient<I{sqlStoredProcedure.TableName.ToPascalCase()}Service, {sqlStoredProcedure.TableName.ToPascalCase()}Service>();"
                 );
                 var updatedFileContent = UpdateMethodStatements(syntaxNode, sqlStoredProcedure, registrationStatement);
                 if (!existingFileContent.Equals(updatedFileContent))
@@ -162,8 +162,8 @@ namespace Postgresfold.Scaffold.Domain.Scaffold
                                                       {
                                                           var interfaceType = typeArgs[0].ToString();
                                                           var concreteType = typeArgs[1].ToString();
-                                                          return interfaceType == $"I{sqlStoredProcedure.TableName}Service" &&
-                                                                 concreteType == $"{sqlStoredProcedure.TableName}Service";
+                                                          return interfaceType == $"I{sqlStoredProcedure.TableName.ToPascalCase()}Service" &&
+                                                                 concreteType == $"{sqlStoredProcedure.TableName.ToPascalCase()}Service";
                                                       }
                                                   }
                                                   return false;
@@ -209,8 +209,8 @@ namespace Postgresfold.Scaffold.Domain.Scaffold
                                         {
                                             var interfaceType = typeArgs[0].ToString();
                                             var concreteType = typeArgs[1].ToString();
-                                            return interfaceType == $"I{sqlStoredProcedure.TableName}Service" &&
-                                                   concreteType == $"{sqlStoredProcedure.TableName}Service";
+                                            return interfaceType == $"I{sqlStoredProcedure.TableName.ToPascalCase()}Service" &&
+                                                   concreteType == $"{sqlStoredProcedure.TableName.ToPascalCase()}Service";
                                         }
                                     }
 
